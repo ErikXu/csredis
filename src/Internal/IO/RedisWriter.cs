@@ -43,7 +43,24 @@ namespace CSRedis.Internal.IO
         public byte[] Prepare(RedisCommand command)
         {
             var parts = command.Command.Split(' ');
-            int length = parts.Length + command.Arguments.Length;
+            //int length = parts.Length + command.Arguments.Length;
+            int length = parts.Length;
+            foreach (var arg in command.Arguments)
+            {
+                if (arg == null)
+                {
+                    continue;
+                }
+                if (arg is string[])
+                {
+                    var values = arg as string[];
+                    length += values.Length;
+                }
+                else
+                {
+                    length += 1;
+                }
+            }
             StringBuilder sb = new StringBuilder();
             sb.Append(MultiBulk).Append(length).Append(EOL);
 
@@ -66,9 +83,25 @@ namespace CSRedis.Internal.IO
                 }
                 else
                 {
-                    string str = String.Format(CultureInfo.InvariantCulture, "{0}", arg);
-                    data = _io.Encoding.GetBytes($"{Bulk}{_io.Encoding.GetByteCount(str)}{EOL}{str}{EOL}");
-                    ms.Write(data, 0, data.Length);
+                    if (arg is string[])
+                    {
+                        var values = arg as string[];
+                        foreach (var value in values)
+                        {
+                            string str = String.Format(CultureInfo.InvariantCulture, "{0}", value);
+                            data = _io.Encoding.GetBytes($"{Bulk}{_io.Encoding.GetByteCount(str)}{EOL}{str}{EOL}");
+                            ms.Write(data, 0, data.Length);
+                        }
+                    }
+                    else
+                    {
+                        if (arg != null)
+                        {
+                            string str = String.Format(CultureInfo.InvariantCulture, "{0}", arg);
+                            data = _io.Encoding.GetBytes($"{Bulk}{_io.Encoding.GetByteCount(str)}{EOL}{str}{EOL}");
+                            ms.Write(data, 0, data.Length);
+                        }
+                    }
                 }
                 //string str = String.Format(CultureInfo.InvariantCulture, "{0}", arg);
                 //sb.Append(Bulk).Append(_io.Encoding.GetByteCount(str)).Append(EOL).Append(str).Append(EOL);
